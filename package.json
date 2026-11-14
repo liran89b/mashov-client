@@ -1,0 +1,19 @@
+{
+  "name": "mashov-client",
+  "version": "0.1.0",
+  "description": "Unofficial TypeScript client for the Mashov (משו\"ב) parent/student portal: login, children, behavior events",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "try": "node dist/cli.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
