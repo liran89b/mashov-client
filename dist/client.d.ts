@@ -1,4 +1,6 @@
 import type { MashovBehaveEvent, MashovChild, MashovClientOptions, MashovSchool, MashovSession } from "./types";
+/** A UUID-shaped id that is the same every time for one school login. */
+export declare function stableDeviceUuid(semel: number, username: string): string;
 /**
  * The school year as Mashov counts it: the calendar year it ends in.
  * The portal rolls over in August, ahead of September 1st.
@@ -23,7 +25,10 @@ export declare class MashovClient {
     private readonly timeoutMs;
     private readonly fetchImpl;
     private readonly onSession?;
+    private readonly deviceUuid;
     private session;
+    /** Cookies from the last session, sent on login so the portal knows this device. */
+    private priorCookie;
     constructor(options: MashovClientOptions);
     getSession(): MashovSession | null;
     /** Logs in with the password, replacing any current session. */
@@ -40,5 +45,7 @@ export declare class MashovClient {
     }): Promise<MashovBehaveEvent[]>;
     /** Authenticated GET against any portal path, relative to `/api/`. */
     get<T>(path: string): Promise<T>;
+    /** Rolling cookies the portal sets mid-session are kept and persisted. */
+    private absorbCookies;
     private send;
 }

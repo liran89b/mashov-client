@@ -43,6 +43,9 @@ for (const child of await client.getChildren()) {
 
 - A saved session is reused until the portal answers 401, then the client logs
   in once more and retries. Persist the session to avoid a login per run.
+- Every login presents the same device id (derived from school + username, or
+  `deviceUuid`) and sends the saved session's cookies, so Mashov does not treat
+  each login as a new device and email the parent about it.
 - The portal gives events no id. `behaveEventKey` builds a stable one from the
   lesson slot and event type, for de-duplication.
 - `client.get<T>(path)` calls any other authenticated portal path.

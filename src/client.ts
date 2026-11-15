@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   MashovAuthError,
   MashovForbiddenError,
@@ -16,6 +17,24 @@ const BASE_URL = "https://web.mashov.info/api/";
 const APP_VERSION = "4.20250101";
 const USER_AGENT = "Mozilla/5.0 (mashov-client)";
 const DEFAULT_TIMEOUT_MS = 15_000;
+
+/** A UUID-shaped id that is the same every time for one school login. */
+export function stableDeviceUuid(semel: number, username: string): string {
+  const hex = createHash("sha256").update(`mashov-client:${semel}:${username.toLowerCase()}`).digest("hex");
+  return [hex.slice(0, 8), hex.slice(8, 12), `4${hex.slice(13, 16)}`, `a${hex.slice(17, 20)}`, hex.slice(20, 32)].join("-");
+}
+
+/** Cookie header merged with a response's Set-Cookie lines; new values win by name. */
+function mergeCookies(previous: string, setCookie: string[]): string {
+  const jar = new Map<string, string>();
+  const add = (pair: string) => {
+    const eq = pair.indexOf("=");
+    if (eq > 0) jar.set(pair.slice(0, eq).trim(), pair.trim());
+  };
+  previous.split(";").forEach(add);
+  setCookie.map((line) => line.split(";", 1)[0]).forEach(add);
+  return [...jar.values()].join("; ");
+}
 
 /**
  * The school year as Mashov counts it: the calendar year it ends in.
@@ -86,7 +105,10 @@ export class MashovClient {
   private readonly timeoutMs: number;
   private readonly fetchImpl: typeof fetch;
   private readonly onSession?: MashovClientOptions["onSession"];
+  private readonly deviceUuid: string;
   private session: MashovSession | null;
+  /** Cookies from the last session, sent on login so the portal knows this device. */
+  private priorCookie: string;
 
   constructor(options: MashovClientOptions) {
     this.semel = options.semel;
@@ -96,6 +118,8 @@ export class MashovClient {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.fetchImpl = options.fetch ?? fetch;
     this.onSession = options.onSession;
+    this.deviceUuid = options.deviceUuid ?? stableDeviceUuid(this.semel, this.username);
+    this.priorCookie = options.session?.cookie ?? "";
     // A saved session from another school or year would silently read the wrong data.
     const saved = options.session;
     this.session = saved && saved.semel === this.semel && saved.year === this.year ? saved : null;
@@ -118,6 +142,7 @@ export class MashovClient {
           Origin: "https://web.mashov.info",
           Referer: "https://web.mashov.info/students/login",
           "User-Agent": USER_AGENT,
+          ...(this.priorCookie ? { Cookie: this.priorCookie } : {}),
         },
         body: JSON.stringify({
           semel: this.semel,
@@ -129,7 +154,7 @@ export class MashovClient {
           apiVersion: APP_VERSION,
           appVersion: APP_VERSION,
           appBuild: APP_VERSION,
-          deviceUuid: "chrome",
+          deviceUuid: this.deviceUuid,
           devicePlatform: "chrome",
           deviceManufacturer: "mashov-client",
           deviceModel: "server",
@@ -154,14 +179,14 @@ export class MashovClient {
     }
 
     const csrfToken = res.headers.get("x-csrf-token");
-    const cookie = res.headers
-      .getSetCookie()
-      .map((line) => line.split(";", 1)[0])
-      .filter(Boolean)
-      .join("; ");
-    if (!csrfToken || !cookie) {
+    const setCookie = res.headers.getSetCookie();
+    if (!csrfToken || setCookie.length === 0) {
       throw new MashovRequestError("Mashov login answered without a session");
     }
+    // Keep long-lived cookies from earlier logins (a remembered-device cookie,
+    // if the portal sets one) next to the fresh session cookies.
+    const cookie = mergeCookies(this.priorCookie, setCookie);
+    this.priorCookie = cookie;
 
     const body = (await res.json().catch(() => ({}))) as {
       accessToken?: {
@@ -226,6 +251,7 @@ export class MashovClient {
     if (res.status === 401) {
       throw new MashovAuthError("Mashov rejected a freshly created session");
     }
+    await this.absorbCookies(res);
     if (res.status === 403) {
       throw new MashovForbiddenError(`The school does not expose ${path.split("?")[0]}`);
     }
@@ -233,6 +259,17 @@ export class MashovClient {
       throw new MashovRequestError(`Mashov GET ${path.split("?")[0]} failed (HTTP ${res.status})`, res.status);
     }
     return (await res.json()) as T;
+  }
+
+  /** Rolling cookies the portal sets mid-session are kept and persisted. */
+  private async absorbCookies(res: Response): Promise<void> {
+    const setCookie = res.headers.getSetCookie();
+    if (!this.session || setCookie.length === 0) return;
+    const cookie = mergeCookies(this.session.cookie, setCookie);
+    if (cookie === this.session.cookie) return;
+    this.session = { ...this.session, cookie };
+    this.priorCookie = cookie;
+    await this.onSession?.(this.session);
   }
 
   private send(path: string, session: MashovSession): Promise<Response> {

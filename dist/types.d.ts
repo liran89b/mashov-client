@@ -60,6 +60,12 @@ export interface MashovClientOptions {
     year?: number;
     /** A session saved earlier; used until the portal rejects it. */
     session?: MashovSession;
+    /**
+     * Stable id this client presents as its device. Mashov emails the parent
+     * about every login from an unknown device, so keep it the same across
+     * logins. Defaults to a UUID derived from the school and username.
+     */
+    deviceUuid?: string;
     /** Called after every successful login, so the caller can persist the session. */
     onSession?: (session: MashovSession) => void | Promise<void>;
     timeoutMs?: number;

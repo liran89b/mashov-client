@@ -1,4 +1,4 @@
-export { MashovClient, behaveEventKey, currentSchoolYear, listSchools } from "./client";
+export { MashovClient, behaveEventKey, currentSchoolYear, listSchools, stableDeviceUuid } from "./client";
 export {
   MashovAuthError,
   MashovError,

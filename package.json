@@ -1,6 +1,6 @@
 {
   "name": "mashov-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Unofficial TypeScript client for the Mashov (משו\"ב) parent/student portal: login, children, behavior events",
   "license": "MIT",
   "main": "dist/index.js",
