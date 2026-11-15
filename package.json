@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "try": "node dist/cli.js"
+    "try": "node --env-file-if-exists=.env dist/cli.js"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

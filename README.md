@@ -67,10 +67,11 @@ with an SMS code can set a password on the portal's own
 ```bash
 npm install && npm run build
 npm run try -- schools <part of the school name>
-MASHOV_SEMEL=... MASHOV_USERNAME=... MASHOV_PASSWORD=... npm run try
+cp .env.example .env   # fill in, then:
+npm run try
 ```
 
-Credentials are read from the environment only.
+Credentials are read from the environment or a local, git-ignored `.env` only.
 
 ## Credits
 
