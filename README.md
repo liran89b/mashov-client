@@ -13,7 +13,7 @@ endpoints its own web app uses, so it can break without notice.
 ## Install
 
 ```bash
-npm install github:liran89b/mashov-client#v0.1.0
+npm install https://github.com/liran89b/mashov-client/archive/refs/tags/v0.1.0.tar.gz
 ```
 
 The compiled `dist/` is committed, so installing needs no build step.
